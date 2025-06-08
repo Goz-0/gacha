@@ -112,7 +112,6 @@
             }
             const esp = esperance(distribution)
 
-            console.log(distribution)
             let recapText = `
         Average number of ${isTargetMode ? 'target SSR copies' : 'SSR hits'} : ${esp}<br>
         Effective probability : ${percent(esp / NPulls)}<br>
@@ -134,7 +133,7 @@
             document.getElementById('recap').innerHTML = recapText
             draw(distribution)
         }
-        function draw(distribution, threshold = 10 ** -10) {
+        function draw(distribution, threshold = 10 ** -10, pColor = '#A0A0A0', pSumColor = '#A000A0') {
             const white = 'rgba(255, 255, 255, 1)'
             const black = 'rgba(0, 0, 0, 1)'
 
@@ -162,7 +161,6 @@
             while (distribution[iMax] < threshold && iMax > 0) {
                 --iMax
             }
-            console.log(iMin, iMax)
 
             let runningSum = distribution.reduce((acc, val, i) => (i < iMin ? acc + val : acc), 0)
             const spaceX = width / (iMax - iMin)
@@ -172,14 +170,14 @@
                 const x = overheadX + Math.round(spaceX * (i - iMin))
                 const y = Math.round((1 - distribution[i]) * spaceY)
 
-                ctx.fillStyle = '#A0A0A0'
+                ctx.fillStyle = pColor
                 ctx.fillRect(x - 5, y - 1, 11, 3)
                 ctx.fillRect(x - 1, y - 5, 3, 11)
 
                 const x2 = overheadX + Math.round(spaceX * (i - iMin))
                 const y2 = Math.round((1 - runningSum) * spaceY)
 
-                ctx.fillStyle = '#A000A0'
+                ctx.fillStyle = pSumColor
                 ctx.fillRect(x2 - 5, y2 - 1, 11, 3)
                 ctx.fillRect(x2 - 1, y2 - 5, 3, 11)
 
