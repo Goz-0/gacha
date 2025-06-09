@@ -2,9 +2,60 @@
 <html>
     <head>
         <title>Gacha pull odds</title>
+        <style>
+            /* Taken from https://www.w3schools.com/howto/howto_css_switch.asp because it looks nice*/
+            .switch {
+                position: relative;
+                display: inline-block;
+                width: 40px;
+                height: 20px;
+            }
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border-radius: 20px;
+                background-color: #ccc;
+                -webkit-transition: 0.4s;
+                transition: 0.4s;
+            }
+            .slider:before {
+                position: absolute;
+                content: '';
+                height: 22px;
+                width: 22px;
+                left: -1px;
+                bottom: -1px;
+                border-radius: 50%;
+                background-color: white;
+                -webkit-transition: 0.4s;
+                transition: 0.4s;
+            }
+            input:checked + .slider {
+                background-color: #2196f3;
+            }
+            input:focus + .slider {
+                box-shadow: 0 0 1px #2196f3;
+            }
+            input:checked + .slider:before {
+                -webkit-transform: translateX(20px);
+                -ms-transform: translateX(20px);
+                transform: translateX(20px);
+            }
+        </style>
     </head>
 
     <script>
+        let inputMode = 0
+
         function getProbabilities(N, p, Cap, options = { returnCache: false }) {
             // Somehow this is faster than having the exact same code in the loop
             // event loop type shit
@@ -57,6 +108,13 @@
         function esperance(P) {
             return P.reduce((acc, p, i) => acc + i * p, 0)
         }
+        function pThreshold(P, threshold) {
+            let runningSum = 0
+            for (let i = 0; i < threshold && i < P.length; ++i) {
+                runningSum += P[i]
+            }
+            return 1 - runningSum
+        }
         function pTresholds(P) {
             const sums = new Array(16).fill(0)
             let runningSum = 0
@@ -85,6 +143,34 @@
             }
             return { p: f, text: f.toString() || '' }
         }
+        function convertToThresholdText(n) {
+            return (
+                (n >= 0 &&
+                    n <= 16 &&
+                    '(' +
+                        [
+                            'None',
+                            'E0',
+                            'E1',
+                            'E2',
+                            'E3',
+                            '+1',
+                            '+2',
+                            '+3',
+                            '+4',
+                            '+5',
+                            '+6',
+                            '+7',
+                            '+8',
+                            '+9',
+                            '+10',
+                            '+11',
+                            '+12',
+                        ][n] +
+                        ')') ||
+                ''
+            )
+        }
         function calc() {
             const { p: p1, text: p1Text } = parseP(document.getElementById('baseProbability-1').value)
             document.getElementById('baseProbability-1').value = p1Text
@@ -96,42 +182,84 @@
             const cap2 = parseInt(document.getElementById('pity-2').value, 10) || 0
             document.getElementById('pity-2').value = cap2
 
-            const NPulls = parseInt(document.getElementById('NPulls').value, 10) || 0
-            document.getElementById('NPulls').value = NPulls
+            if (inputMode) {
+                const NPulls = parseInt(document.getElementById('NPulls').value, 10) || 0
+                document.getElementById('NPulls').value = NPulls
 
-            const isTargetMode = !!p2
-            let distribution
-            if (p1) {
-                if (p2) {
-                    distribution = getFocusedProbabilities(NPulls, p1, cap1, p2, cap2)
+                const isTargetMode = !!p2
+                let distribution
+                if (p1) {
+                    if (p2) {
+                        distribution = getFocusedProbabilities(NPulls, p1, cap1, p2, cap2)
+                    } else {
+                        distribution = getProbabilities(NPulls, p1, cap1)
+                    }
                 } else {
-                    distribution = getProbabilities(NPulls, p1, cap1)
+                    distribution = new Array(NPulls).fill(0)
                 }
-            } else {
-                distribution = new Array(NPulls).fill(0)
-            }
-            const esp = esperance(distribution)
+                const esp = esperance(distribution)
 
-            let recapText = `
-        Average number of ${isTargetMode ? 'target SSR copies' : 'SSR hits'} : ${esp}<br>
-        Effective probability : ${percent(esp / NPulls)}<br>
-        `
-            if (isTargetMode) {
-                const pT = pTresholds(distribution)
-                recapText += `
-        <br>
-        Probability of reaching common thresholds :<br>
-        E0&nbsp; : ${percent(pT.E0).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
-        E1&nbsp; : ${percent(pT.E1).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
-        E2&nbsp; : ${percent(pT.E2).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
-        E3&nbsp; : ${percent(pT.E3).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
-        +4&nbsp; : ${percent(pT['+4']).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
-        +8&nbsp; : ${percent(pT['+8']).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
-        +12 : ${percent(pT['+12']).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
-        `
+                let recapText = `
+Average number of ${isTargetMode ? 'target SSR copies' : 'SSR hits'} : ${esp}<br>
+Effective probability : ${percent(esp / NPulls)}<br>
+`
+                if (isTargetMode) {
+                    const pT = pTresholds(distribution)
+                    recapText += `
+<br>
+Probability of reaching common thresholds :<br>
+E0&nbsp; : ${percent(pT.E0).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
+E1&nbsp; : ${percent(pT.E1).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
+E2&nbsp; : ${percent(pT.E2).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
+E3&nbsp; : ${percent(pT.E3).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
++4&nbsp; : ${percent(pT['+4']).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
++8&nbsp; : ${percent(pT['+8']).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
++12 : ${percent(pT['+12']).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
+`
+                }
+                document.getElementById('recap').innerHTML = recapText
+                draw(distribution)
+            } else {
+                const NCopies = parseInt(document.getElementById('NCopies').value, 10) || 0
+                document.getElementById('NCopies').value = NCopies
+                const { p: targetOdds, text: oddsText } = parseP(document.getElementById('targetOdds').value)
+                document.getElementById('targetOdds').value = oddsText
+
+                let distribution
+
+                let nPullsLowerBound = 0
+                let nPullsUpperBound = NCopies * cap1 * cap2
+                let oddsLower = 0
+                let oddsUpper = 1
+                let runningSum = 0
+
+                while (nPullsUpperBound - nPullsLowerBound > 1) {
+                    const halfPoint = nPullsLowerBound + Math.round((nPullsUpperBound - nPullsLowerBound) / 2)
+                    if (p1) {
+                        if (p2) {
+                            distribution = getFocusedProbabilities(halfPoint, p1, cap1, p2, cap2)
+                        } else {
+                            distribution = getProbabilities(halfPoint, p1, cap1)
+                        }
+                    } else {
+                        distribution = new Array(NPulls).fill(0)
+                    }
+                    const p = pThreshold(distribution, NCopies)
+                    if (p >= targetOdds) {
+                        nPullsUpperBound = halfPoint
+                        oddsUpper = p
+                    } else {
+                        nPullsLowerBound = halfPoint
+                        oddsLower = p
+                    }
+                }
+
+                let recapText = `
+${nPullsLowerBound} pulls : ${percent(oddsLower, 2)}<br>
+${nPullsUpperBound} pulls : ${percent(oddsUpper, 2)}<br>
+`
+                document.getElementById('recap').innerHTML = recapText
             }
-            document.getElementById('recap').innerHTML = recapText
-            draw(distribution)
         }
         function draw(distribution, threshold = 10 ** -10, pColor = '#A0A0A0', pSumColor = '#A000A0') {
             const white = 'rgba(255, 255, 255, 1)'
@@ -213,33 +341,84 @@
                 ctx.restore()
             }
         }
+        function toggleInputMode() {
+            inputMode = !inputMode
+            document.getElementById('inputModeSpan').textContent = inputMode ? 'number of pulls' : 'target odds'
+            if (inputMode) {
+                document.getElementById('nPullsInputContainer').style.display = ''
+                document.getElementById('targetOddsInputContainer').style.display = 'none'
+                hintNCopies()
+            } else {
+                document.getElementById('nPullsInputContainer').style.display = 'none'
+                document.getElementById('targetOddsInputContainer').style.display = ''
+            }
+            document.getElementById('recap').innerHTML = ''
+
+            const canvas = document.getElementById('graph')
+            const ctx = canvas.getContext('2d')
+            ctx.canvas.width = 0
+            ctx.canvas.height = 0
+        }
+        function hintNCopies() {
+            const NCopies = parseInt(document.getElementById('NCopies').value, 10) || 0
+            document.getElementById('NCopiesText').textContent = convertToThresholdText(NCopies)
+        }
     </script>
-    <body style="background-color: #1e1f1b; font-family: 'Courier New', Courier, monospace">
+    <body
+        style="
+            background-color: #1e1f1b;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 20px;
+            color: #eaebe7;
+        "
+    >
         <div id="controlPanel">
+            <p>
+                Input mode :
+                <label class="switch">
+                    <input id="inputMode" type="checkbox" oninput="toggleInputMode()" />
+                    <span class="slider"></span>
+                </label>
+                <span id="inputModeSpan"></span>
+            </p>
             <!-- That could have been a form, but I do not care -->
-            <label for="baseProbability-1" style="color: #eaebe7">Base probability of an SSR hit</label>
+            <label for="baseProbability-1">Base probability of an SSR hit</label>
             <input type="text" id="baseProbability-1" style="width: 60px" value="0.0303" />
-            <label for="pity-1" style="color: #eaebe7">Pity threshold</label>
+            <label for="pity-1">Pity threshold</label>
             <input type="text" id="pity-1" style="width: 40px" value="30" />
             <br />
-            <label for="baseProbability-2" style="color: #eaebe7">Base probability of hitting the target SSR</label>
+            <label for="baseProbability-2">Base probability of hitting the target SSR</label>
             <input type="text" id="baseProbability-2" style="width: 60px" value="0.3333" />
-            <label for="pity-2" style="color: #eaebe7">Pity threshold</label>
+            <label for="pity-2">Pity threshold</label>
             <input type="text" id="pity-2" style="width: 40px" value="3" />
             <br />
-            <label for="NPulls" style="color: #eaebe7">Number of Pulls</label>
-            <input type="text" id="NPulls" style="width: 40px" value="100" />
+            <br />
+            <div id="nPullsInputContainer">
+                <label for="NPulls">Number of Pulls</label>
+                <input type="text" id="NPulls" style="width: 40px" value="100" />
+            </div>
+            <div id="targetOddsInputContainer">
+                <label for="NCopies">Number of copies wanted</label>
+                <input type="text" id="NCopies" style="width: 40px" value="4" oninput="hintNCopies()" />
+                <span id="NCopiesText"></span>
+                <br />
+                <label for="targetOdds">Desired odds</label>
+                <input type="text" id="targetOdds" style="width: 40px" value="0.80" />
+            </div>
             <br />
 
             <button onclick="calc()">Calculate</button>
         </div>
         <br />
         <div id="Summary">
-            <span id="recap" style="color: #eaebe7"></span>
+            <span id="recap"></span>
         </div>
         <br />
         <div id="graphDiv">
             <canvas id="graph" style="min-width: 600px; max-width: 80vw; min-height: 600px; max-height: 80vh"></canvas>
         </div>
     </body>
+    <script>
+        toggleInputMode()
+    </script>
 </html>
