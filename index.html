@@ -56,31 +56,45 @@
     <script>
         let inputMode = 0
 
-        function getProbabilities(N, p, Cap, options = { returnCache: false }) {
+        function getProbabilities(NPulls, p, pityThreshold, options = { returnCache: false }) {
+            const q = 1 - p
+            const pPowers = new Array(NPulls + 1)
+            let mult = 1
+            for (let i = 0; i <= NPulls; ++i) {
+                pPowers[i] = mult
+                mult = mult * p
+            }
+            const qPowers = new Array(pityThreshold + 1)
+            mult = 1
+            for (let i = 0; i <= NPulls; ++i) {
+                qPowers[i] = mult
+                mult = mult * q
+            }
+
             // Somehow this is faster than having the exact same code in the loop
             // event loop type shit
             function F(k, n) {
                 let s = 0
-                for (let i = 1; i <= n - k + 1 && i <= Cap; ++i) {
-                    s += localFCache[n - i][k - 1] * (1 - p) ** (i - 1) * (i === Cap ? 1 : p)
+                for (let i = 1; i <= n - k + 1 && i <= pityThreshold; ++i) {
+                    s += localFCache[n - i][k - 1] * qPowers[i - 1] * (i === pityThreshold ? 1 : p)
                 }
                 return s
             }
 
             const localFCache = []
-            for (let i = 0; i <= N; ++i) {
-                localFCache[i] = new Array(N + 1).fill(0)
+            for (let i = 0; i <= NPulls; ++i) {
+                localFCache[i] = new Array(NPulls + 1).fill(0)
             }
             // filling
-            for (let i = 0; i <= N; ++i) {
+            for (let i = 0; i <= NPulls; ++i) {
                 for (let j = 0; j <= i; ++j) {
                     if (j === i) {
-                        localFCache[i][j] = p ** i
-                    } else if (j <= i / Cap - 1) {
+                        localFCache[i][j] = pPowers[i]
+                    } else if (j <= i / pityThreshold - 1) {
                         // or continue
                         localFCache[i][j] = 0
                     } else if (j === 0) {
-                        localFCache[i][j] = (1 - p) ** i
+                        localFCache[i][j] = qPowers[i]
                     } else {
                         localFCache[i][j] = F(j, i)
                     }
@@ -90,12 +104,12 @@
                 return localFCache
             }
 
-            const probabilities = localFCache[N]
+            const probabilities = localFCache[NPulls]
             return probabilities
         }
-        function getFocusedProbabilities(NPulls, p1, PityThreshold1, p2, PityThreshold2) {
-            const probNumber = getProbabilities(NPulls, p1, PityThreshold1)
-            const all = getProbabilities(NPulls, p2, PityThreshold2, { returnCache: true })
+        function getFocusedProbabilities(NPulls, p1, pityThreshold1, p2, pityThreshold2) {
+            const probNumber = getProbabilities(NPulls, p1, pityThreshold1)
+            const all = getProbabilities(NPulls, p2, pityThreshold2, { returnCache: true })
             const summed = Array(NPulls + 1).fill(0)
             for (let i = 0; i <= NPulls; ++i) {
                 // start at i to avoid summing zeroes
