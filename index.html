@@ -258,6 +258,11 @@ E3&nbsp; : ${percent(pT.E3).padStart(8, ' ').replace(' ', '&nbsp;')}<br>
 ${nPullsLowerBound} pulls : ${percent(oddsLower, 2)}<br>
 ${nPullsUpperBound} pulls : ${percent(oddsUpper, 2)}<br>
 `
+                if (targetOdds === 1 && nPullsUpperBound < NCopies * cap1 * cap2) {
+                    recapText += `<br>
+True 100% odds are reached at ${NCopies * cap1 * cap2} pulls,<br>
+but the difference is simply too small to be stored after this point.<br>`
+                }
                 document.getElementById('recap').innerHTML = recapText
             }
         }
