@@ -57,7 +57,7 @@ function percent(n, k = 3) {
     return (100 * n).toFixed(k) + '%'
 }
 
-const n = 25 // DO NOT USE >25
+const n = 20 // DO NOT USE >25
 const p = 0.0303
 const pity = 30
 
